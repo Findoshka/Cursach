@@ -371,7 +371,9 @@
             if (!header) return;
 
             let lastScrollY = window.scrollY;
+            let accumulatedUp = 0;
             const minDelta = 8;
+            const revealThreshold = 60;
 
             function handleScroll() {
                 if (window.innerWidth > 768) {
@@ -387,13 +389,26 @@
 
                 if (currentY <= 0) {
                     header.classList.remove('header-hidden');
-                } else if (delta > 0) {
-                    header.classList.add('header-hidden');
-                } else {
-                    header.classList.remove('header-hidden');
+                    accumulatedUp = 0;
+                    lastScrollY = currentY;
+                    return;
                 }
 
-                lastScrollY = currentY;
+                if (delta > minDelta) {
+                    header.classList.add('header-hidden');
+                    accumulatedUp = 0;
+                    lastScrollY = currentY;
+                    return;
+                }
+
+                if (delta < -minDelta) {
+                    accumulatedUp += -delta;
+                    if (accumulatedUp >= revealThreshold) {
+                        header.classList.remove('header-hidden');
+                        accumulatedUp = 0;
+                    }
+                    lastScrollY = currentY;
+                }
             }
 
             window.addEventListener('scroll', handleScroll, { passive: true });
