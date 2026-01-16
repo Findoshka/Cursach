@@ -46,9 +46,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Максимальный 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 # Конфигурация ИИ API
-app.config['AI_API_BASE_URL'] = 'https://api.artemox.com/v1'
-app.config['AI_API_KEY'] = 'sk-FTfuepQaJOYW9RBSOOM6xA'
-app.config['AI_ENABLED'] = True  # Включить/выключить использование реального API
+app.config['AI_API_BASE_URL'] = os.environ.get('AI_API_BASE_URL', 'https://api.artemox.com/v1')
+app.config['AI_API_KEY'] = os.environ.get('AI_API_KEY', '')
+app.config['AI_ENABLED'] = os.environ.get('AI_ENABLED', 'true').lower() == 'true'
 
 # SLA настройки
 app.config['SLA_DAYS'] = int(os.environ.get('SLA_DAYS', 3))
