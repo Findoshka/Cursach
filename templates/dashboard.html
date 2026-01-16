@@ -118,6 +118,7 @@
             <a href="{{ url_for('applications_list') }}" class="btn btn-small">Все заявки →</a>
         </div>
         {% if recent_applications %}
+        <div class="table-responsive">
         <table class="data-table">
             <thead>
                 <tr>
@@ -138,6 +139,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <p class="empty-message">Заявок пока нет</p>
         {% endif %}
@@ -149,6 +151,7 @@
             <a href="{{ url_for('support_chat') }}" class="btn btn-small">Все обращения →</a>
         </div>
         {% if recent_tickets %}
+        <div class="table-responsive">
         <table class="data-table">
             <thead>
                 <tr>
@@ -169,6 +172,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <p class="empty-message">Обращений пока нет</p>
         {% endif %}

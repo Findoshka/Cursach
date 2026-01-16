@@ -153,6 +153,12 @@ body > * {
     padding: 0 20px;
 }
 
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* Шапка */
 header {
     background: rgba(34, 38, 41, 0.95);
@@ -1601,6 +1607,7 @@ h2::after {
     border-radius: 16px;
     overflow: hidden;
     border: 1px solid rgba(134, 194, 50, 0.15);
+    min-width: 720px;
 }
 
 [data-theme="dark"] .data-table {
@@ -3321,7 +3328,49 @@ footer {
 }
 
 /* Адаптивность */
+@media (max-width: 1024px) {
+    .container {
+        padding: 0 16px;
+    }
+
+    h2 {
+        font-size: 30px;
+        margin-top: 40px;
+        margin-bottom: 40px;
+    }
+
+    .nav-link {
+        padding: 6px 6px;
+        font-size: 12px;
+    }
+
+    .logo {
+        padding: 6px 10px;
+        font-size: 16px;
+    }
+
+    .logo img,
+    .logo-image {
+        height: 38px;
+        max-width: 160px;
+    }
+
+    .notifications-dropdown {
+        width: 320px;
+    }
+}
+
 @media (max-width: 768px) {
+    header {
+        padding: 12px 0;
+    }
+
+    header .container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
     .data-table {
         font-size: 12px;
     }
@@ -3343,9 +3392,10 @@ footer {
     
     .nav-main {
         margin-left: 0;
-        flex-wrap: wrap;
-        justify-content: center;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
         gap: 8px;
+        width: 100%;
     }
     
     .nav-controls {
@@ -3388,6 +3438,119 @@ footer {
     
     h2 {
         font-size: 28px;
+    }
+
+    .actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .actions-right {
+        width: 100%;
+    }
+
+    .actions-right .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .notifications-dropdown {
+        width: 90vw;
+        right: 5vw;
+    }
+
+    .search-filters-container {
+        padding: 18px;
+    }
+
+    .service-card-actions {
+        flex-direction: column;
+    }
+
+    .service-card-buttons {
+        flex-direction: column;
+    }
+
+    .support-input {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .support-buttons {
+        flex-direction: row;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .chat-input-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .chat-input {
+        width: 100%;
+    }
+
+    .profile-badges {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 12px;
+    }
+
+    h2 {
+        font-size: 24px;
+        margin-top: 30px;
+        margin-bottom: 30px;
+    }
+
+    .btn {
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+
+    .form {
+        padding: 20px;
+    }
+
+    .auth-form {
+        padding: 30px 24px;
+    }
+
+    .logo {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .logo img,
+    .logo-image {
+        height: 32px;
+        max-width: 140px;
+    }
+
+    .notifications-btn,
+    .theme-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .nav-controls {
+        width: 100%;
+        justify-content: stretch;
+        flex-wrap: wrap;
+    }
+
+    .user-name-text {
+        max-width: 120px;
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
     }
 }
 

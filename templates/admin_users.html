@@ -21,6 +21,7 @@
 </div>
 
 {% if users %}
+<div class="table-responsive">
 <table class="data-table">
     <thead>
         <tr>
@@ -66,6 +67,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% else %}
 <p class="empty-message">Пользователи не найдены.</p>
 {% endif %}
