@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}ИИ-ассистент - Система учета заявок{% endblock %}
+
+{% block content %}
+<div class="ai-chat-wrapper">
+    <h2>Чат с ИИ-ассистентом</h2>
+    <div class="ai-chat-container">
+        <div class="chat-info">
+            <p>Добро пожаловать! Я ваш виртуальный помощник. Я помогу вам узнать об услугах интернет-провайдера и оформить заявку на подключение.</p>
+            <p><strong>Что я могу сделать:</strong></p>
+            <ul>
+                <li>Рассказать об доступных тарифах и услугах</li>
+                <li>Помочь оформить заявку на подключение</li>
+                <li>Ответить на вопросы о нашем сервисе</li>
+            </ul>
+            <p style="margin-top: 15px; color: var(--text-secondary);"><em>Просто напишите свой вопрос или начните с приветствия!</em></p>
+        </div>
+
+        <div id="chat-messages" class="chat-messages">
+            {% if chat_history %}
+                {% for msg in chat_history %}
+                <div class="message {% if msg.is_bot %}bot-message{% else %}user-message{% endif %}">
+                    <div class="message-content">
+                        {{ msg.message }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="message bot-message">
+                    <div class="message-content">
+                        Здравствуйте! Я ваш виртуальный помощник. Готов помочь с выбором услуг и оформлением заявки на подключение. Чем могу быть полезен?
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <script>
+            const userIsAdmin = {{ 'true' if is_admin else 'false' }};
+        </script>
+
+        <div class="chat-input-container">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Напишите ваш вопрос или сообщение..." autocomplete="off">
+            <button id="send-button" class="btn btn-primary">Отправить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const sendButton = document.getElementById('send-button');
+
+function addMessage(text, isBot = false, scroll = true) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isBot ? 'bot-message' : 'user-message'}`;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = text;
+    
+    messageDiv.appendChild(contentDiv);
+    chatMessages.appendChild(messageDiv);
+    
+    if (scroll) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+}
+
+function sendMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+    
+    addMessage(message, false);
+    chatInput.value = '';
+    
+    fetch('/ai-chat/message', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addMessage(data.response, true);
+        
+        if (data.application_ready) {
+            const createButton = document.createElement('button');
+            createButton.className = 'btn btn-primary';
+            createButton.textContent = 'Создать заявку';
+            createButton.style.marginTop = '10px';
+            createButton.onclick = function() {
+                fetch('/ai-chat/create-application', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (userIsAdmin) {
+                            addMessage('Заявка успешно создана! Вы можете просмотреть её в разделе "Заявки".', true);
+                        } else {
+                            addMessage('Заявка успешно создана! Вы можете просмотреть её статус в разделе "Мои заявки". Наш менеджер свяжется с вами в ближайшее время.', true);
+                        }
+                        createButton.remove();
+                    }
+                });
+            };
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot-message';
+            messageDiv.appendChild(createButton);
+            chatMessages.appendChild(messageDiv);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        addMessage('Произошла ошибка при отправке сообщения.', true);
+    });
+}
+
+// Загрузка истории при загрузке страницы
+{% if chat_history %}
+    {% for msg in chat_history %}
+        addMessage(`{{ msg.message|replace("'", "\\'")|replace("\n", "\\n")|replace("`", "\\`") }}`, {{ 'true' if msg.is_bot else 'false' }}, false);
+    {% endfor %}
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+{% endif %}
+
+sendButton.addEventListener('click', sendMessage);
+chatInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+</script>
+{% endblock %}

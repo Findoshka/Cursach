@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Загрузка логотипа - Система учета заявок{% endblock %}
+
+{% block content %}
+<h2>Загрузка логотипа сайта</h2>
+
+<div class="form">
+    {% if site_logo %}
+    <div class="form-group">
+        <label>Текущий логотип</label>
+        <div style="margin-top: 15px;">
+            <img src="{{ url_for('uploaded_file', filename=site_logo) }}" alt="Логотип сайта" style="max-width: 300px; max-height: 100px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        </div>
+        <form method="POST" style="margin-top: 15px;">
+            <input type="hidden" name="delete" value="1">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Удалить логотип?')">Удалить логотип</button>
+        </form>
+    </div>
+    {% endif %}
+    
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="logo">Загрузить новый логотип</label>
+            <div class="file-upload">
+                <label for="logo" class="file-upload-label">Выберите файл</label>
+                <span class="file-upload-name" id="logo-file-name">Файл не выбран</span>
+                <input type="file" id="logo" name="logo" accept="image/*" required>
+            </div>
+            <small class="form-hint">Разрешены форматы: PNG, JPG, JPEG, GIF, WEBP. Максимальный размер: 16MB</small>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{{ url_for('services_list') }}" class="btn btn-small">Отмена</a>
+            <button type="submit" class="btn btn-primary">Загрузить</button>
+        </div>
+    </form>
+</div>
+<script>
+document.getElementById('logo').addEventListener('change', function() {
+    const fileNameEl = document.getElementById('logo-file-name');
+    if (this.files && this.files.length > 0) {
+        const name = this.files[0].name;
+        fileNameEl.textContent = name.length > 40 ? name.slice(0, 37) + '...' : name;
+    } else {
+        fileNameEl.textContent = 'Файл не выбран';
+    }
+});
+</script>
+{% endblock %}

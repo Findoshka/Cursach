@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация - Система учета заявок{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-form">
+        <h2>Создание аккаунта</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 25px; text-align: center;">Заполните форму ниже, чтобы начать пользоваться сервисом</p>
+        
+        <form method="POST" class="auth-form-content">
+            <div class="form-group">
+                <label for="username">Имя пользователя</label>
+                <input type="text" id="username" name="username" required pattern="[A-Za-z0-9_]{3,30}" title="Только латинские буквы, цифры и подчеркивания, от 3 до 30 символов" maxlength="30" autofocus placeholder="например, ivan_petrov">
+                <small class="form-hint">Латинские буквы, цифры и подчеркивания (3-30 символов)</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Адрес электронной почты</label>
+                <input type="email" id="email" name="email" required placeholder="ваш.email@example.com">
+                <small class="form-hint">На этот адрес будет отправлено письмо для подтверждения</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" required minlength="8" pattern="^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$" title="Минимум 8 символов: буквы, цифры и спецсимволы" placeholder="••••••••">
+                <small class="form-hint">Минимум 8 символов, включая буквы, цифры и специальные символы (@$!%*#?&)</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="password_confirm">Подтвердите пароль</label>
+                <input type="password" id="password_confirm" name="password_confirm" required placeholder="••••••••">
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-auth">Создать аккаунт</button>
+            </div>
+        </form>
+        
+        <div class="auth-links">
+            <p>Уже зарегистрированы? <a href="{{ url_for('login') }}">Войти в аккаунт</a></p>
+            <p><a href="{{ url_for('resend_verification') }}">Не получили письмо с подтверждением?</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const password = document.getElementById('password');
+    const passwordConfirm = document.getElementById('password_confirm');
+    
+    function validatePassword() {
+        if (password.value !== passwordConfirm.value) {
+            passwordConfirm.setCustomValidity('Пароли не совпадают');
+        } else {
+            passwordConfirm.setCustomValidity('');
+        }
+    }
+    
+    password.addEventListener('input', validatePassword);
+    passwordConfirm.addEventListener('input', validatePassword);
+    
+    // Проверка сложности пароля
+    password.addEventListener('input', function() {
+        const value = this.value;
+        const hasLetter = /[A-Za-z]/.test(value);
+        const hasDigit = /\d/.test(value);
+        const hasSpecial = /[@$!%*#?&]/.test(value);
+        const isLongEnough = value.length >= 8;
+        
+        if (!hasLetter || !hasDigit || !hasSpecial || !isLongEnough) {
+            this.setCustomValidity('Пароль должен содержать минимум 8 символов: буквы, цифры и спецсимволы');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+});
+</script>
+{% endblock %}

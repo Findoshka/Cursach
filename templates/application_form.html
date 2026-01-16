@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Редактирование заявки' if application else 'Создание заявки' }} - Система учета заявок{% endblock %}
+
+{% block content %}
+<h2>{{ 'Редактирование заявки' if application else 'Оформление новой заявки' }}</h2>
+
+<div class="form">
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    
+    <form method="POST">
+        <div class="form-group">
+            <label for="client_name">Имя клиента</label>
+            <input type="text" id="client_name" name="client_name" value="{{ application.client_name if application else '' }}" required pattern="[A-Za-zА-Яа-яЁё\s\-]{2,100}" title="Только буквы, пробелы и дефисы, от 2 до 100 символов" minlength="2" maxlength="100">
+        </div>
+        
+        <div class="form-group">
+            <label for="client_phone">Телефон</label>
+            <input type="tel" id="client_phone" name="client_phone" value="{{ application.client_phone if application else '' }}" required pattern="^\+?[0-9\s\-\(\)]+$">
+        </div>
+        
+        <div class="form-group">
+            <label for="address-search-input">Поиск адреса</label>
+            <input type="text" id="address-search-input" placeholder="Начните вводить адрес для поиска на карте (например: Комсомольская 1а, г. Норильск)">
+        </div>
+        
+        <div class="form-group">
+            <label for="address-map">Карта</label>
+            <div id="address-map" style="width: 100%; height: 400px; border-radius: 10px;"></div>
+        </div>
+        
+        <div class="form-group">
+            <label for="client_address">Адрес подключения</label>
+            <input type="text" id="client_address" name="client_address" value="{{ application.client_address if application else '' }}" required readonly>
+        </div>
+        
+        <div class="form-group">
+            <label for="status">Статус</label>
+            <select id="status" name="status">
+                <option value="новая" {% if application and application.status == 'новая' %}selected{% endif %}>Новая</option>
+                <option value="в работе" {% if application and application.status == 'в работе' %}selected{% endif %}>В работе</option>
+                <option value="выполнена" {% if application and application.status == 'выполнена' %}selected{% endif %}>Выполнена</option>
+            </select>
+        </div>
+
+        <div class="form-group sla-field">
+            <label for="sla_deadline">Дедлайн (SLA)</label>
+            <div class="sla-input">
+                <input type="date" id="sla_deadline" name="sla_deadline"
+                       value="{{ application.sla_deadline.strftime('%Y-%m-%d') if application and application.sla_deadline else '' }}">
+                <span class="sla-badge">SLA</span>
+            </div>
+            <div class="sla-hint">Дата, к которой заявка должна быть выполнена.</div>
+        </div>
+        
+        <div class="form-group">
+            <label>Услуги</label>
+            <div class="checkbox-group">
+                {% for service in services %}
+                <label class="checkbox-label">
+                    <input type="checkbox" name="service_ids" value="{{ service.id }}" 
+                           {% if application and service in application.services %}checked{% endif %}>
+                    {{ service.name }} - {{ service.price }} ₽/мес.
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="notes">Дополнительные заметки</label>
+            <textarea id="notes" name="notes" rows="4">{{ application.notes if application else '' }}</textarea>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{{ url_for('applications_list') }}" class="btn btn-small">Отмена</a>
+            <button type="submit" class="btn btn-primary">{{ 'Сохранить изменения' if application else 'Создать заявку' }}</button>
+        </div>
+    </form>
+</div>
+
+<script>
+let addressMapForm, addressMarkerForm;
+
+function initAddressMapForm() {
+    if (window.addressMapForm) {
+        return;
+    }
+    
+    if (typeof L === 'undefined') {
+        console.error('Leaflet не загружен');
+        return;
+    }
+    
+    addressMapForm = L.map('address-map').setView([55.751574, 37.573856], 10);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(addressMapForm);
+    
+    const searchInputForm = document.getElementById('address-search-input');
+    const citySelectForm = document.getElementById('city-select');
+    let searchTimeoutForm;
+    
+    function performSearchForm(query, city) {
+        if (!query || query.length < 2) {
+            return;
+        }
+        
+        let fullQuery = query;
+        if (city) {
+            fullQuery = city + ', ' + query;
+        }
+        
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullQuery)}&limit=1&addressdetails=1`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    const lat = parseFloat(result.lat);
+                    const lng = parseFloat(result.lon);
+                    const address = result.display_name;
+                    updateMapWithAddressForm(address, lat, lng);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка геокодирования:', error);
+            });
+    }
+    
+    function updateMapWithAddressForm(address, lat, lng) {
+        document.getElementById('client_address').value = address;
+        
+        if (addressMarkerForm) {
+            addressMapForm.removeLayer(addressMarkerForm);
+        }
+        
+        addressMarkerForm = L.marker([lat, lng]).addTo(addressMapForm);
+        addressMarkerForm.bindPopup(address).openPopup();
+        addressMapForm.setView([lat, lng], 17);
+    }
+    
+    if (searchInputForm) {
+        searchInputForm.addEventListener('input', function() {
+            clearTimeout(searchTimeoutForm);
+            const query = this.value.trim();
+            const city = citySelectForm ? citySelectForm.value : '';
+            
+            if (query.length < 2) {
+                return;
+            }
+            
+            searchTimeoutForm = setTimeout(function() {
+                performSearchForm(query, city);
+            }, 500);
+        });
+    }
+    
+    if (citySelectForm) {
+        citySelectForm.addEventListener('change', function() {
+            const query = searchInputForm ? searchInputForm.value.trim() : '';
+            if (query.length >= 2) {
+                performSearchForm(query, this.value);
+            }
+        });
+    }
+    
+    addressMapForm.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.address) {
+                    const address = data.display_name;
+                    updateMapWithAddressForm(address, lat, lng);
+                    
+                    const searchInputForm = document.getElementById('address-search-input');
+                    if (searchInputForm) {
+                        const addressParts = address.split(',');
+                        if (addressParts.length > 1) {
+                            searchInputForm.value = addressParts.slice(-2).join(',').trim();
+                        } else {
+                            searchInputForm.value = address;
+                        }
+                    }
+                    
+                    const citySelectForm = document.getElementById('city-select');
+                    if (citySelectForm && data.address.city) {
+                        const cityName = data.address.city;
+                        const options = citySelectForm.options;
+                        for (let i = 0; i < options.length; i++) {
+                            if (cityName.includes(options[i].value) || options[i].value.includes(cityName)) {
+                                citySelectForm.value = options[i].value;
+                                break;
+                            }
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка обратного геокодирования:', error);
+            });
+    });
+    
+    const existingAddress = document.getElementById('client_address').value;
+    if (existingAddress) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(existingAddress)}&limit=1`;
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lng = parseFloat(data[0].lon);
+                    addressMapForm.setView([lat, lng], 15);
+                    
+                    addressMarkerForm = L.marker([lat, lng]).addTo(addressMapForm);
+                    addressMarkerForm.bindPopup(existingAddress).openPopup();
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка геокодирования существующего адреса:', error);
+            });
+    }
+    
+    window.addressMapForm = addressMapForm;
+    window.addressMarkerForm = addressMarkerForm;
+}
+
+function initLeaflet() {
+    if (typeof L !== 'undefined') {
+        initAddressMapForm();
+    } else {
+        setTimeout(initLeaflet, 100);
+    }
+}
+initLeaflet();
+</script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}

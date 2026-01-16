@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Мои заявки - Система учета заявок{% endblock %}
+
+{% block content %}
+<h2>Мои заявки</h2>
+
+<div class="actions">
+    <a href="{{ url_for('services_list') }}" class="btn btn-primary">+ Создать заявку</a>
+</div>
+
+{% if applications %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Имя клиента</th>
+            <th>Телефон</th>
+            <th>Адрес</th>
+            <th>Услуги</th>
+            <th>Статус</th>
+            <th>Дедлайн</th>
+            <th>Дата создания</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for application in applications %}
+        <tr class="{% if application.sla_deadline and application.status != 'выполнена' and application.sla_deadline < now %}overdue-row{% endif %}">
+            <td>{{ application.id }}</td>
+            <td><strong>{{ application.client_name }}</strong></td>
+            <td>{{ application.client_phone }}</td>
+            <td>{{ application.client_address }}</td>
+            <td>
+                {% if application.services %}
+                    {% for service in application.services %}
+                        {{ service.name }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>
+                <span class="status status-{{ application.status|replace(' ', '-')|lower }}">
+                    {{ application.status }}
+                </span>
+            </td>
+            <td>
+                {% if application.sla_deadline %}
+                    <span class="deadline-badge {% if application.status != 'выполнена' and application.sla_deadline < now %}overdue{% endif %}">
+                        {{ application.sla_deadline.strftime('%d.%m.%Y') }}
+                    </span>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>{{ application.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="status-info">
+    <h3>Статусы заявок:</h3>
+    <ul>
+        <li><span class="status status-новая">Новая</span> - Заявка создана и ожидает рассмотрения</li>
+        <li><span class="status status-в-работе">В работе</span> - Заявка находится в процессе обработки</li>
+        <li><span class="status status-выполнена">Выполнена</span> - Заявка успешно выполнена</li>
+    </ul>
+</div>
+{% else %}
+<p class="empty-message">У вас пока нет заявок. Создайте заявку через <a href="{{ url_for('ai_chat') }}">ИИ-ассистента</a>.</p>
+{% endif %}
+{% endblock %}

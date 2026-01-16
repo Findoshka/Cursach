@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль - Система учета заявок{% endblock %}
+
+{% block content %}
+<div class="profile-header">
+    <div class="profile-avatar">
+        {% if user.avatar_filename %}
+            <div class="avatar-circle avatar-image">
+                <img src="{{ url_for('uploaded_file', filename=user.avatar_filename) }}" alt="Аватар" class="avatar-img">
+            </div>
+        {% else %}
+            <div class="avatar-circle">{{ user.get_display_name()[0].upper() }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="profile-info">
+        <h2>{{ user.get_display_name() }}</h2>
+        <div class="profile-badges">
+            <span class="badge badge-{{ user.role }}">{{ 'Администратор' if user.is_admin() else 'Пользователь' }}</span>
+        </div>
+    </div>
+    
+    <div class="profile-actions">
+        <a href="{{ url_for('profile_edit') }}" class="btn btn-primary">Редактировать профиль</a>
+    </div>
+</div>
+
+<div class="profile-stats">
+    <div class="stat-card stat-primary">
+        <div class="stat-icon stat-icon-doc"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ applications_count }}</div>
+            <div class="stat-label">Создано заявок</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-info">
+        <div class="stat-icon stat-icon-calendar"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ user.created_at.strftime('%d.%m.%Y') }}</div>
+            <div class="stat-label">Дата регистрации</div>
+        </div>
+    </div>
+    
+    <div class="stat-card {{ 'stat-admin' if user.is_admin() else 'stat-user' }}">
+        <div class="stat-icon {{ 'stat-icon-shield' if user.is_admin() else 'stat-icon-user' }}"></div>
+        <div class="stat-content">
+            <div class="stat-value">
+                {% if user.is_admin() %}
+                    Администратор{% if user.admin_level %} ({{ user.get_admin_level_label() }}){% endif %}
+                {% else %}
+                    Пользователь
+                {% endif %}
+            </div>
+            <div class="stat-label">Роль в системе</div>
+        </div>
+    </div>
+</div>
+
+<div class="profile-actions-bottom">
+    <a href="{{ url_for('my_applications') }}" class="btn">Мои заявки</a>
+    <a href="{{ url_for('services_list') }}" class="btn">Услуги</a>
+    <a href="{{ url_for('ai_chat') }}" class="btn">ИИ-ассистент</a>
+    {% if user.is_admin() and user.admin_level >= 3 %}
+        <a href="{{ url_for('site_logo_upload') }}" class="btn">Настройки логотипа</a>
+        <a href="{{ url_for('admin_users') }}" class="btn">Пользователи и роли</a>
+    {% endif %}
+</div>
+{% endblock %}

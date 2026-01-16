@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Активность администраторов{% endblock %}
+
+{% block content %}
+<h2>Активность администраторов</h2>
+
+<div class="activity-summary">
+    Всего записей: {{ total }}
+</div>
+
+{% if activities %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Дата и время</th>
+            <th>Администратор</th>
+            <th>Действие</th>
+            <th>Объект</th>
+            <th>Детали</th>
+            <th>IP</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for activity in activities %}
+        <tr>
+            <td>{{ activity.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td>{{ activity.admin.get_display_name() }}</td>
+            <td>{{ activity.action }}</td>
+            <td>
+                {% if activity.entity_type == 'service' %}
+                    Услуга #{{ activity.entity_id }}
+                {% elif activity.entity_type == 'application' %}
+                    Заявка #{{ activity.entity_id }}
+                {% elif activity.entity_type == 'support_ticket' %}
+                    Тикет #{{ activity.entity_id }}
+                {% elif activity.entity_type == 'site_logo' %}
+                    Логотип сайта
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>{{ activity.details or '—' }}</td>
+            <td>{{ activity.ip_address or '—' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="activity-pagination">
+    {% if page > 1 %}
+        <a class="btn btn-small" href="{{ url_for('admin_activity_log', page=page-1) }}">Назад</a>
+    {% endif %}
+    <span class="activity-page-info">Страница {{ page }} из {{ total_pages }}</span>
+    {% if page < total_pages %}
+        <a class="btn btn-small" href="{{ url_for('admin_activity_log', page=page+1) }}">Вперед</a>
+    {% endif %}
+</div>
+{% endif %}
+{% else %}
+<p class="empty-message">Пока нет записей активности.</p>
+{% endif %}
+{% endblock %}

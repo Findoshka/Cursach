@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование профиля - Система учета заявок{% endblock %}
+
+{% block content %}
+<h2>Редактирование профиля</h2>
+
+<div class="form">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="display_name">
+                Отображаемое имя
+            </label>
+            <input type="text" id="display_name" name="display_name" value="{{ user.get_display_name() }}" minlength="2" maxlength="30" placeholder="Ваше имя для отображения">
+            <small class="form-hint">Имя, которое будет видно другим пользователям системы (от 2 до 30 символов)</small>
+        </div>
+        
+        <div class="form-group">
+            <label>Аватар</label>
+            {% if user.avatar_filename %}
+            <div class="avatar-preview-container">
+                <div class="avatar-preview">
+                    <img src="{{ url_for('uploaded_file', filename=user.avatar_filename) }}" alt="Текущий аватар" id="avatar-preview-img">
+                    <div class="avatar-overlay">
+                        <span class="avatar-change-text">Изменить</span>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="avatar-preview-container">
+                <div class="avatar-preview avatar-preview-empty">
+                    <div class="avatar-placeholder">
+                        <span class="avatar-placeholder-icon">+</span>
+                        <span class="avatar-placeholder-text">Загрузить аватар</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            <input type="file" id="avatar" name="avatar" accept="image/*" style="display: none;">
+            <small class="form-hint">Нажмите на изображение для выбора нового аватара. Поддерживаемые форматы: PNG, JPG, JPEG, GIF, WEBP</small>
+        </div>
+        
+        <div class="password-section">
+            <h3>Изменение пароля</h3>
+            <div class="form-group">
+                <label for="old_password">
+                    Текущий пароль
+                </label>
+                <input type="password" id="old_password" name="old_password" placeholder="••••••••">
+            </div>
+            
+            <div class="form-group">
+                <label for="new_password">
+                    Новый пароль
+                </label>
+                <input type="password" id="new_password" name="new_password" minlength="8" pattern="^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$" placeholder="••••••••">
+                <small class="form-hint">Минимум 8 символов, включая буквы, цифры и специальные символы</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">
+                    Подтвердите новый пароль
+                </label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="••••••••">
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{{ url_for('profile') }}" class="btn btn-small">Отмена</a>
+            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка загрузки аватара
+    const avatarInput = document.getElementById('avatar');
+    const avatarPreview = document.querySelector('.avatar-preview');
+    const avatarPreviewImg = document.getElementById('avatar-preview-img');
+    
+    // Клик по превью открывает выбор файла
+    if (avatarPreview) {
+        avatarPreview.addEventListener('click', function() {
+            avatarInput.click();
+        });
+    }
+    
+    // Предпросмотр выбранного файла
+    avatarInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (avatarPreviewImg) {
+                    avatarPreviewImg.src = e.target.result;
+                } else {
+                    // Если нет существующего аватара, создаем превью
+                    const previewContainer = document.querySelector('.avatar-preview-container');
+                    if (previewContainer) {
+                        const preview = previewContainer.querySelector('.avatar-preview');
+                        preview.innerHTML = `
+                            <img src="${e.target.result}" alt="Предпросмотр аватара" id="avatar-preview-img" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                            <div class="avatar-overlay">
+                                <span class="avatar-change-text">Изменить</span>
+                            </div>
+                        `;
+                        preview.classList.remove('avatar-preview-empty');
+                        preview.querySelector('.avatar-preview').addEventListener('click', function() {
+                            avatarInput.click();
+                        });
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Валидация паролей
+    const newPassword = document.getElementById('new_password');
+    const confirmPassword = document.getElementById('confirm_password');
+    
+    function validatePassword() {
+        if (newPassword.value !== confirmPassword.value) {
+            confirmPassword.setCustomValidity('Пароли не совпадают');
+        } else {
+            confirmPassword.setCustomValidity('');
+        }
+    }
+    
+    newPassword.addEventListener('input', validatePassword);
+    confirmPassword.addEventListener('input', validatePassword);
+    
+    newPassword.addEventListener('input', function() {
+        const value = this.value;
+        const hasLetter = /[A-Za-z]/.test(value);
+        const hasDigit = /\d/.test(value);
+        const hasSpecial = /[@$!%*#?&]/.test(value);
+        const isLongEnough = value.length >= 8;
+        
+        if (value && (!hasLetter || !hasDigit || !hasSpecial || !isLongEnough)) {
+            this.setCustomValidity('Пароль должен содержать минимум 8 символов: буквы, цифры и спецсимволы');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+});
+</script>
+{% endblock %}

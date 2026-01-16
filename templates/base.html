@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Система учета заявок провайдера{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="{{ url_for('index') }}" class="logo">
+                    {% if site_logo %}
+                        <img src="{{ url_for('uploaded_file', filename=site_logo) }}" alt="Логотип сайта" class="logo-image">
+                    {% else %}
+                        <span class="logo-icon"></span>
+                        <span class="logo-text">Провайдер</span>
+                    {% endif %}
+                </a>
+                {% if session.get('user_id') %}
+                    <div class="nav-main">
+                        <a href="{{ url_for('services_list') }}" class="nav-link" title="Услуги">
+                            <span class="nav-text">Услуги</span>
+                        </a>
+                        {% if session.get('role') == 'admin' %}
+                            <a href="{{ url_for('dashboard') }}" class="nav-link" title="Dashboard">
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                            <a href="{{ url_for('applications_list') }}" class="nav-link" title="Заявки">
+                                <span class="nav-text">Заявки</span>
+                            </a>
+                            <a href="{{ url_for('admin_activity_log') }}" class="nav-link" title="Активность администраторов">
+                                <span class="nav-text">Активность</span>
+                            </a>
+                        {% else %}
+                            <a href="{{ url_for('my_applications') }}" class="nav-link" title="Мои заявки">
+                                <span class="nav-text">Мои заявки</span>
+                            </a>
+                        {% endif %}
+                        {% if session.get('role') != 'admin' %}
+                        <a href="{{ url_for('ai_chat') }}" class="nav-link" title="ИИ-ассистент">
+                            <span class="nav-text">ИИ-ассистент</span>
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('support_chat') }}" class="nav-link" title="Поддержка">
+                            <span class="nav-text">Поддержка</span>
+                        </a>
+                        {% if session.get('role') == 'admin' %}
+                            <div class="nav-divider"></div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="nav-controls">
+                        <button class="theme-toggle" onclick="toggleTheme()" title="Переключить тему" aria-label="Переключить тему">
+                            <span id="theme-text" class="theme-text">Темная</span>
+                        </button>
+                        <div class="notifications-container">
+                            <button class="notifications-btn" id="notifications-btn" onclick="toggleNotifications(event)" title="Уведомления" aria-label="Уведомления">
+                                <span class="notifications-icon-text">Уведомления</span>
+                                {% if unread_notifications_count > 0 %}
+                                <span class="notifications-badge">{{ unread_notifications_count }}</span>
+                                {% endif %}
+                            </button>
+                            <div class="notifications-dropdown" id="notifications-dropdown" style="display: none;">
+                                <div class="notifications-header">
+                                    <h3>Уведомления</h3>
+                                    {% if unread_notifications_count > 0 %}
+                                    <button class="mark-all-read-btn" onclick="markAllNotificationsRead()">Отметить все прочитанными</button>
+                                    {% endif %}
+                                </div>
+                                <div class="notifications-list" id="notifications-list">
+                                    <div class="notifications-loading">Загрузка...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </nav>
+            {% if session.get('user_id') %}
+            <div class="user-info">
+                <a href="{{ url_for('profile') }}" class="user-link">
+                    {% if current_user and current_user.avatar_filename %}
+                        <img src="{{ url_for('uploaded_file', filename=current_user.avatar_filename) }}" alt="Аватар" class="header-avatar">
+                    {% else %}
+                        <div class="header-avatar">{{ (current_user.get_display_name() if current_user else 'U')[0].upper() }}</div>
+                    {% endif %}
+                    <span class="user-name-text">{{ current_user.get_display_name() if current_user else 'Пользователь' }}</span>
+                </a>
+                {% if current_user %}
+                    <span class="badge badge-{{ current_user.role }}">
+                        {% if current_user.is_admin() %}
+                            Администратор{% if current_user.admin_level %} ({{ current_user.get_admin_level_label() }}){% endif %}
+                        {% else %}
+                            Пользователь
+                        {% endif %}
+                    </span>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn btn-small btn-logout">Выход</a>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Система учета заявок провайдера. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Переключение темы
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeText(newTheme);
+        }
+
+        function updateThemeText(theme) {
+            const themeText = document.getElementById('theme-text');
+            if (themeText) {
+                themeText.textContent = theme === 'dark' ? 'Темная' : 'Светлая';
+            }
+        }
+
+        // Загрузка сохраненной темы
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeText(savedTheme);
+        });
+
+        // Форматирование телефона
+        function formatPhone(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length > 0) {
+                if (value.length <= 1) {
+                    value = '+' + value;
+                } else if (value.length <= 4) {
+                    value = '+' + value.substring(0, 1) + ' (' + value.substring(1);
+                } else if (value.length <= 7) {
+                    value = '+' + value.substring(0, 1) + ' (' + value.substring(1, 4) + ') ' + value.substring(4);
+                } else if (value.length <= 9) {
+                    value = '+' + value.substring(0, 1) + ' (' + value.substring(1, 4) + ') ' + value.substring(4, 7) + '-' + value.substring(7);
+                } else {
+                    value = '+' + value.substring(0, 1) + ' (' + value.substring(1, 4) + ') ' + value.substring(4, 7) + '-' + value.substring(7, 9) + '-' + value.substring(9, 11);
+                }
+            }
+            input.value = value;
+        }
+
+        // Применяем форматирование ко всем полям телефона
+        document.addEventListener('DOMContentLoaded', function() {
+            const phoneInputs = document.querySelectorAll('input[type="tel"]');
+            phoneInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    formatPhone(this);
+                });
+            });
+        });
+
+        // Удаление пробелов из username и password
+        document.addEventListener('DOMContentLoaded', function() {
+            const usernameInputs = document.querySelectorAll('input[name="username"]');
+            const passwordInputs = document.querySelectorAll('input[type="password"]');
+            
+            usernameInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/\s/g, '');
+                });
+            });
+            
+            passwordInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/\s/g, '');
+                });
+            });
+        });
+
+        // Загрузка уведомлений
+        function loadNotifications() {
+            fetch('/api/notifications')
+                .then(response => response.json())
+                .then(data => {
+                    const list = document.getElementById('notifications-list');
+                    if (data.notifications.length === 0) {
+                        list.innerHTML = '<div class="notifications-empty">У вас пока нет уведомлений</div>';
+                    } else {
+                        list.innerHTML = data.notifications.map(n => {
+                            const url = n.url || '#';
+                            const hasUrl = url && url !== '#';
+                            const clickHandler = hasUrl 
+                                ? `window.location.href='${url}'; markNotificationRead(${n.id}, event);`
+                                : `markNotificationRead(${n.id}, event);`;
+                            
+                            return `
+                                <div class="notification-item ${n.is_read ? 'read' : 'unread'}" onclick="${clickHandler}" style="cursor: ${hasUrl ? 'pointer' : 'default'};">
+                                    <div class="notification-content">
+                                        <div class="notification-title">${escapeHtml(n.title)}</div>
+                                        <div class="notification-message">${escapeHtml(n.message)}</div>
+                                        <div class="notification-time">${n.time_ago}</div>
+                                    </div>
+                                    ${!n.is_read ? '<div class="notification-dot"></div>' : ''}
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                    updateBadgeCount(data.unread_count);
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки уведомлений:', error);
+                    document.getElementById('notifications-list').innerHTML = '<div class="notifications-error">Ошибка загрузки уведомлений</div>';
+                });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleNotifications(event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            const dropdown = document.getElementById('notifications-dropdown');
+            const btn = document.getElementById('notifications-btn');
+            if (!dropdown || !btn) return;
+            
+            const currentDisplay = dropdown.style.display || window.getComputedStyle(dropdown).display;
+            
+            if (currentDisplay === 'none' || !currentDisplay) {
+                // Вычисляем позицию относительно кнопки
+                const btnRect = btn.getBoundingClientRect();
+                dropdown.style.display = 'block';
+                dropdown.style.top = (btnRect.bottom + window.scrollY + 10) + 'px';
+                dropdown.style.right = (window.innerWidth - btnRect.right) + 'px';
+                loadNotifications();
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        function markNotificationRead(notificationId, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            fetch(`/api/notifications/${notificationId}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateBadgeCount(data.unread_count);
+                    // Не перезагружаем список, если происходит переход по ссылке
+                    if (!event || !event.defaultPrevented) {
+                        loadNotifications();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при отметке уведомления:', error);
+            });
+        }
+
+        function markAllNotificationsRead() {
+            fetch('/api/notifications/read-all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateBadgeCount(0);
+                    loadNotifications();
+                }
+            });
+        }
+
+        function updateBadgeCount(count) {
+            const badge = document.querySelector('.notifications-badge');
+            const btn = document.getElementById('notifications-btn');
+            if (count > 0) {
+                if (badge) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                } else {
+                    const newBadge = document.createElement('span');
+                    newBadge.className = 'notifications-badge';
+                    newBadge.textContent = count > 99 ? '99+' : count;
+                    btn.appendChild(newBadge);
+                }
+            } else {
+                if (badge) {
+                    badge.remove();
+                }
+            }
+        }
+
+        // Закрытие dropdown при клике вне его
+        document.addEventListener('click', function(event) {
+            const container = document.querySelector('.notifications-container');
+            const dropdown = document.getElementById('notifications-dropdown');
+            const btn = document.getElementById('notifications-btn');
+            
+            if (dropdown && btn && container) {
+                const isClickInside = container.contains(event.target);
+                const currentDisplay = dropdown.style.display || window.getComputedStyle(dropdown).display;
+                
+                if (!isClickInside && currentDisplay === 'block') {
+                    dropdown.style.display = 'none';
+                }
+            }
+        });
+
+        // Автообновление уведомлений каждые 30 секунд
+        setInterval(function() {
+            const dropdown = document.getElementById('notifications-dropdown');
+            if (dropdown && dropdown.style.display === 'block') {
+                loadNotifications();
+            } else {
+                // Обновляем только счетчик, если dropdown закрыт
+                fetch('/api/notifications?limit=0')
+                    .then(response => response.json())
+                    .then(data => {
+                        updateBadgeCount(data.unread_count);
+                    })
+                    .catch(error => console.error('Ошибка обновления счетчика:', error));
+            }
+        }, 30000);
+
+        // Загрузка уведомлений при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('notifications-btn')) {
+                fetch('/api/notifications?limit=0')
+                    .then(response => response.json())
+                    .then(data => {
+                        updateBadgeCount(data.unread_count);
+                    })
+                    .catch(error => console.error('Ошибка загрузки счетчика:', error));
+            }
+        });
+
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

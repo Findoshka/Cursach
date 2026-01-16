@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Система учета заявок{% endblock %}
+
+{% block content %}
+<h2>Панель управления</h2>
+
+<!-- Карточки статистики по заявкам -->
+<div class="dashboard-stats">
+    <div class="stat-card stat-primary">
+        <div class="stat-icon stat-icon-doc"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ total_applications }}</div>
+            <div class="stat-label">Всего заявок</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-info">
+        <div class="stat-icon stat-icon-new"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ new_applications }}</div>
+            <div class="stat-label">Новые заявки</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-warning">
+        <div class="stat-icon stat-icon-work"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ in_work_applications }}</div>
+            <div class="stat-label">В работе</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-success">
+        <div class="stat-icon stat-icon-check"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ completed_applications }}</div>
+            <div class="stat-label">Выполнено</div>
+        </div>
+    </div>
+</div>
+
+<!-- Карточки статистики по поддержке -->
+<div class="dashboard-stats">
+    <div class="stat-card stat-tickets">
+        <div class="stat-icon stat-icon-ticket"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ total_tickets }}</div>
+            <div class="stat-label">Всего обращений</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-info">
+        <div class="stat-icon stat-icon-new"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ new_tickets }}</div>
+            <div class="stat-label">Новые обращения</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-warning">
+        <div class="stat-icon stat-icon-work"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ in_work_tickets }}</div>
+            <div class="stat-label">В обработке</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-success">
+        <div class="stat-icon stat-icon-check"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ resolved_tickets + closed_tickets }}</div>
+            <div class="stat-label">Решено/Закрыто</div>
+        </div>
+    </div>
+</div>
+
+<!-- Карточки общей статистики -->
+<div class="dashboard-stats">
+    <div class="stat-card stat-users">
+        <div class="stat-icon stat-icon-user"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ total_users }}</div>
+            <div class="stat-label">Пользователей</div>
+            <div class="stat-sublabel">Админов: {{ admin_count }}, Пользователей: {{ user_count }}</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-services">
+        <div class="stat-icon stat-icon-service"></div>
+        <div class="stat-content">
+            <div class="stat-value">{{ total_services }}</div>
+            <div class="stat-label">Услуг</div>
+        </div>
+    </div>
+</div>
+
+<!-- Графики -->
+<div class="dashboard-charts">
+    <div class="chart-container">
+        <div class="chart-card">
+            <h3>Заявки за последние 30 дней</h3>
+            <canvas id="applicationsChart"></canvas>
+        </div>
+        
+        <div class="chart-card">
+            <h3>Распределение по статусам</h3>
+            <canvas id="statusChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Последние заявки и тикеты -->
+<div class="dashboard-recent">
+    <div class="recent-card">
+        <div class="recent-header">
+            <h3>Последние заявки</h3>
+            <a href="{{ url_for('applications_list') }}" class="btn btn-small">Все заявки →</a>
+        </div>
+        {% if recent_applications %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Клиент</th>
+                    <th>Статус</th>
+                    <th>Дата</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in recent_applications %}
+                <tr>
+                    <td>{{ app.id }}</td>
+                    <td><strong>{{ app.client_name }}</strong></td>
+                    <td><span class="status status-{{ app.status|replace(' ', '-')|lower }}">{{ app.status }}</span></td>
+                    <td>{{ app.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-message">Заявок пока нет</p>
+        {% endif %}
+    </div>
+    
+    <div class="recent-card">
+        <div class="recent-header">
+            <h3>Последние обращения</h3>
+            <a href="{{ url_for('support_chat') }}" class="btn btn-small">Все обращения →</a>
+        </div>
+        {% if recent_tickets %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Тема</th>
+                    <th>Статус</th>
+                    <th>Дата</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in recent_tickets %}
+                <tr>
+                    <td>{{ ticket.id }}</td>
+                    <td><strong>{{ ticket.subject }}</strong></td>
+                    <td><span class="status status-{{ ticket.status|replace(' ', '-')|lower }}">{{ ticket.status }}</span></td>
+                    <td>{{ ticket.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-message">Обращений пока нет</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Chart.js для графиков -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// График заявок за последние 30 дней
+const applicationsData = {{ applications_by_day | tojson }};
+const dates = applicationsData.map(d => d.date);
+const counts = applicationsData.map(d => d.count);
+
+const ctx1 = document.getElementById('applicationsChart').getContext('2d');
+const applicationsChart = new Chart(ctx1, {
+    type: 'line',
+    data: {
+        labels: dates,
+        datasets: [{
+            label: 'Количество заявок',
+            data: counts,
+            borderColor: 'rgba(134, 194, 50, 1)',
+            backgroundColor: 'rgba(134, 194, 50, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 3,
+            pointHoverRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+// Круговая диаграмма по статусам
+const statusData = {{ status_stats | tojson }};
+const ctx2 = document.getElementById('statusChart').getContext('2d');
+const statusChart = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(statusData),
+        datasets: [{
+            data: Object.values(statusData),
+            backgroundColor: [
+                'rgba(134, 194, 50, 0.8)',
+                'rgba(255, 165, 0, 0.8)',
+                'rgba(76, 175, 80, 0.8)'
+            ],
+            borderColor: [
+                'rgba(134, 194, 50, 1)',
+                'rgba(255, 165, 0, 1)',
+                'rgba(76, 175, 80, 1)'
+            ],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Применение темы к графикам
+function updateChartTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    
+    if (applicationsChart) {
+        applicationsChart.options.scales.x.ticks.color = textColor;
+        applicationsChart.options.scales.y.ticks.color = textColor;
+        applicationsChart.options.scales.x.grid.color = gridColor;
+        applicationsChart.options.scales.y.grid.color = gridColor;
+        applicationsChart.update();
+    }
+    
+    if (statusChart) {
+        statusChart.options.plugins.legend.labels.color = textColor;
+        statusChart.update();
+    }
+}
+
+// Обновление темы при переключении
+document.addEventListener('DOMContentLoaded', function() {
+    updateChartTheme();
+    
+    const themeToggle = document.querySelector('.theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            setTimeout(updateChartTheme, 100);
+        });
+    }
+});
+</script>
+
+{% endblock %}

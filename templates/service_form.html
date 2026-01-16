@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Редактирование услуги' if service else 'Добавление услуги' }} - Система учета заявок{% endblock %}
+
+{% block content %}
+<h2>{{ 'Редактирование услуги' if service else 'Добавление услуги' }}</h2>
+
+<div class="form">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="name">Название услуги</label>
+            <input type="text" id="name" name="name" value="{{ service.name if service else '' }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Описание</label>
+            <textarea id="description" name="description" rows="5">{{ service.description if service else '' }}</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="price">Цена (руб./мес.)</label>
+            <input type="number" id="price" name="price" step="0.01" min="0" value="{{ service.price if service else '' }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="speed">Скорость интернета</label>
+            <input type="text" id="speed" name="speed" value="{{ service.speed if service else '' }}" placeholder="Например: 100 Мбит/с" pattern="[0-9\sМбит/с]+" title="Только цифры и единицы измерения">
+        </div>
+        
+        <div class="form-group">
+            <label for="image">Изображение услуги</label>
+            <input type="file" id="image" name="image" accept="image/*">
+            {% if service and service.image_filename %}
+            <p>Текущее изображение: <img src="{{ url_for('uploaded_file', filename=service.image_filename) }}" alt="{{ service.name }}" style="max-width: 200px; margin-top: 10px;"></p>
+            {% endif %}
+        </div>
+        
+        <div class="form-actions">
+            <a href="{{ url_for('services_list') }}" class="btn btn-small">Отмена</a>
+            <button type="submit" class="btn btn-primary">{{ 'Сохранить изменения' if service else 'Добавить услугу' }}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

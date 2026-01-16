@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Тикет поддержки - Система учета заявок{% endblock %}
+
+{% block content %}
+<div class="ticket-header-view" style="margin-top: 50px;">
+    <h2>{{ ticket.subject }}</h2>
+    <div class="ticket-meta">
+        <p><strong>Пользователь:</strong> {{ ticket.user.get_display_name() }}</p>
+        <p><strong>Статус:</strong> 
+            <span class="status status-{{ ticket.status|replace(' ', '-')|lower }}">
+                {{ ticket.status|upper }}
+            </span>
+        </p>
+        <p><strong>Создан:</strong> {{ ticket.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p><strong>Обновлен:</strong> {{ ticket.updated_at.strftime('%d.%m.%Y %H:%M') }}</p>
+    </div>
+    
+{% if session.get('role') == 'admin' and current_user and current_user.admin_level >= 2 %}
+    <div class="ticket-actions">
+        <select id="status-select" class="status-select">
+            <option value="новая" {% if ticket.status == 'новая' %}selected{% endif %}>Новая</option>
+            <option value="в работе" {% if ticket.status == 'в работе' %}selected{% endif %}>В работе</option>
+            <option value="решена" {% if ticket.status == 'решена' %}selected{% endif %}>Решена</option>
+            <option value="закрыта" {% if ticket.status == 'закрыта' %}selected{% endif %}>Закрыта</option>
+        </select>
+    </div>
+    {% endif %}
+</div>
+
+{% if rating %}
+<div class="support-rating-view">
+    <h3>Оценка поддержки</h3>
+    <div class="rating-stars">
+        {% for i in range(1, 6) %}
+            <span class="star {% if i <= rating.rating %}filled{% endif %}"></span>
+        {% endfor %}
+    </div>
+    {% if rating.comment %}
+        <div class="support-rating-comment">{{ rating.comment }}</div>
+    {% endif %}
+    <div class="support-rating-meta">
+        {{ rating.user.get_display_name() }} • {{ rating.created_at.strftime('%d.%m.%Y %H:%M') }}
+    </div>
+</div>
+{% endif %}
+
+{% if (not session.get('role') == 'admin') and ticket.status in ['решена', 'закрыта'] %}
+<div class="support-rating-form">
+    <h3>Оцените работу поддержки</h3>
+    <form method="POST" action="{{ url_for('support_ticket_rate', ticket_id=ticket.id) }}">
+        <div class="form-group">
+            <label for="rating">Оценка</label>
+            <select id="rating" name="rating" required>
+                <option value="">Выберите оценку</option>
+                {% for i in range(1, 6) %}
+                    <option value="{{ i }}" {% if rating and rating.rating == i %}selected{% endif %}>{{ i }} / 5</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="comment">Комментарий (необязательно)</label>
+            <textarea id="comment" name="comment" rows="3" maxlength="1000" placeholder="Поделитесь впечатлениями...">{{ rating.comment if rating else '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            {% if rating %}Обновить оценку{% else %}Отправить оценку{% endif %}
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<div class="support-chat-container">
+    <div id="chat-messages" class="chat-messages support-chat">
+        {% for msg in messages %}
+        <div class="message {% if msg.is_support %}support-message{% else %}user-message{% endif %}">
+            <div class="message-header">
+                <strong>{% if msg.is_support %}Поддержка{% else %}{{ msg.user.get_display_name() }}{% endif %}</strong>
+                <span class="message-time">{{ msg.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+            </div>
+            <div class="message-content">
+                {{ msg.message }}
+                {% if msg.image_filename %}
+                <div class="support-msg-image">
+                    <img src="{{ url_for('uploaded_file', filename=msg.image_filename) }}" alt="Изображение" onclick="openImageModal(this.src)">
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="support-input">
+        <textarea id="message-input" placeholder="Напишите ваше сообщение..." rows="3"></textarea>
+        <div class="support-buttons">
+            <label for="image-input" class="btn file-upload-btn">Прикрепить фото</label>
+            <input type="file" id="image-input" accept="image/*" style="display: none;">
+            <button id="send-button" class="btn btn-primary">Отправить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра изображения -->
+<div id="imageModal" class="modal">
+    <span class="modal-close" onclick="closeImageModal()">&times;</span>
+    <img class="modal-content" id="modalImage">
+</div>
+
+<script>
+const ticketId = {{ ticket.id }};
+const chatMessages = document.getElementById('chat-messages');
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-button');
+const imageInput = document.getElementById('image-input');
+let selectedFile = null;
+
+// Отправка сообщения
+function sendMessage() {
+    const message = messageInput.value.trim();
+    if (!message && !selectedFile) return;
+    
+    const formData = new FormData();
+    formData.append('message', message);
+    if (selectedFile) {
+        formData.append('image', selectedFile);
+    }
+    
+    fetch(`/support/ticket/${ticketId}/message`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addMessage(data.message.message, data.message.is_support, data.message.image_filename, data.message.created_at);
+            messageInput.value = '';
+            selectedFile = null;
+            imageInput.value = '';
+            updateFileNameDisplay('');
+        } else {
+            alert('Ошибка отправки сообщения');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Ошибка отправки сообщения');
+    });
+}
+
+function addMessage(message, isSupport, imageFilename, createdAt) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isSupport ? 'support-message' : 'user-message'}`;
+    
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'message-header';
+    headerDiv.innerHTML = `<strong>${isSupport ? 'Поддержка' : 'Вы'}</strong><span class="message-time">${createdAt}</span>`;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = message;
+    
+    if (imageFilename) {
+        const imgDiv = document.createElement('div');
+        imgDiv.className = 'support-msg-image';
+        const img = document.createElement('img');
+        img.src = `/uploads/${imageFilename}`;
+        img.alt = 'Изображение';
+        img.onclick = function() { openImageModal(this.src); };
+        imgDiv.appendChild(img);
+        contentDiv.appendChild(imgDiv);
+    }
+    
+    messageDiv.appendChild(headerDiv);
+    messageDiv.appendChild(contentDiv);
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+sendButton.addEventListener('click', sendMessage);
+messageInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// Обработка выбора файла
+imageInput.addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+        selectedFile = e.target.files[0];
+        updateFileNameDisplay(selectedFile.name);
+    }
+});
+
+function updateFileNameDisplay(fileName) {
+    const fileLabel = document.querySelector('.file-upload-btn');
+    if (fileName) {
+        fileLabel.textContent = `Фото: ${fileName.length > 20 ? fileName.substring(0, 20) + '...' : fileName}`;
+    } else {
+        fileLabel.textContent = 'Прикрепить фото';
+    }
+}
+
+// Изменение статуса (только для админов)
+{% if session.get('role') == 'admin' and current_user and current_user.admin_level >= 2 %}
+document.getElementById('status-select').addEventListener('change', function() {
+    fetch(`/support/ticket/${ticketId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: this.value })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+});
+{% endif %}
+
+// Модальное окно для изображений
+function openImageModal(src) {
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+    modal.style.display = 'flex';
+    modalImg.src = src;
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('imageModal');
+    if (event.target == modal) {
+        closeImageModal();
+    }
+}
+</script>
+{% endblock %}

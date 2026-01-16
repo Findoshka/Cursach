@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block title %}Услуги - Система учета заявок{% endblock %}
+
+{% block content %}
+<h2>Список услуг</h2>
+
+{% if session.get('role') == 'admin' and current_user and current_user.admin_level >= 2 %}
+<div class="actions">
+    <a href="{{ url_for('service_add') }}" class="btn btn-primary">+ Добавить услугу</a>
+</div>
+{% endif %}
+
+{% if services %}
+<div class="services-grid">
+    {% for service in services %}
+    <div class="service-card">
+        <div class="service-card-header">
+            <div class="service-image">
+                {% if service.image_filename %}
+                    <img src="{{ url_for('uploaded_file', filename=service.image_filename) }}" alt="{{ service.name }}">
+                {% else %}
+                    <div class="service-image-placeholder"></div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="service-header-info">
+            <h3>{{ service.name }}</h3>
+            <div class="service-price">{{ service.price }} ₽/мес.</div>
+            {% if service.speed %}
+            <div class="service-speed">Скорость: {{ service.speed }}</div>
+            {% endif %}
+            
+            {% set rating = ratings.get(service.id) %}
+            <div class="service-rating">
+                {% if rating %}
+                    <div class="rating-stars">
+                        {% for i in range(1, 6) %}
+                            <span class="star {% if i <= (rating.avg | round(0, 'floor')) %}filled{% endif %}"></span>
+                        {% endfor %}
+                    </div>
+                    <div class="rating-meta">
+                        <span class="rating-value">{{ '%.1f' | format(rating.avg) }}</span>
+                        {% set count = rating.count %}
+                        <span class="rating-count">(
+                            {% if count == 1 %}1 отзыв{% elif count in [2, 3, 4] %}{{ count }} отзыва{% else %}{{ count }} отзывов{% endif %}
+                        )</span>
+                    </div>
+                {% else %}
+                    <div class="rating-empty">Пока нет отзывов</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="service-card-body">
+            <p class="service-preview">{{ service.description or 'Описание отсутствует' }}</p>
+            
+            <div class="service-details" style="display: none;">
+                <p><strong>Подробное описание:</strong></p>
+                <p>{{ service.description or 'Подробное описание отсутствует' }}</p>
+                
+                <div class="service-reviews">
+                    <h4>Отзывы клиентов</h4>
+                    {% set reviews = reviews_map.get(service.id, []) %}
+                    {% if reviews %}
+                        {% for review in reviews %}
+                            <div class="review-item">
+                                <div class="review-header">
+                                    <span class="review-author">{{ review.user.get_display_name() }}</span>
+                                    <div class="rating-stars small">
+                                        {% for i in range(1, 6) %}
+                                            <span class="star {% if i <= review.rating %}filled{% endif %}"></span>
+                                        {% endfor %}
+                                    </div>
+                                    <span class="review-date">{{ review.created_at.strftime('%d.%m.%Y') }}</span>
+                                </div>
+                                {% if review.comment %}
+                                    <div class="review-comment">{{ review.comment }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="empty-message">Пока нет отзывов. Будьте первым!</p>
+                    {% endif %}
+                </div>
+                
+                {% if session.get('role') != 'admin' %}
+                    {% set my_review = user_reviews.get(service.id) %}
+                    <form method="POST" action="{{ url_for('service_add_review', service_id=service.id) }}" class="review-form">
+                        <div class="form-group">
+                            <label for="rating-{{ service.id }}">Оценка</label>
+                            <select id="rating-{{ service.id }}" name="rating" required class="rating-select">
+                                <option value="">Выберите оценку</option>
+                                {% for i in range(1, 6) %}
+                                    <option value="{{ i }}" {% if my_review and my_review.rating == i %}selected{% endif %}>
+                                        {{ i }} / 5
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="comment-{{ service.id }}">Комментарий</label>
+                            <textarea id="comment-{{ service.id }}" name="comment" rows="3" maxlength="1000" placeholder="Поделитесь впечатлениями...">{{ my_review.comment if my_review else '' }}</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-small btn-primary">
+                            {% if my_review %}Обновить отзыв{% else %}Оставить отзыв{% endif %}
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="service-card-actions">
+            <button class="btn btn-small toggle-details" onclick="toggleDetails(this)">
+                <span class="toggle-icon">▼</span> Подробнее
+            </button>
+            {% if session.get('role') != 'admin' %}
+            <button class="btn btn-buy" onclick="openBuyModal({{ service.id }}, '{{ service.name }}', {{ service.price }})">
+                Оформить заявку
+            </button>
+            {% else %}
+            <div class="service-card-buttons">
+                {% if current_user and current_user.admin_level >= 2 %}
+                    <a href="{{ url_for('service_edit', service_id=service.id) }}" class="btn btn-small">Редактировать</a>
+                    <form method="POST" action="{{ url_for('service_delete', service_id=service.id) }}" style="display: inline;" onsubmit="return confirm('Удалить услугу?');">
+                        <button type="submit" class="btn btn-small btn-danger">Удалить</button>
+                    </form>
+                {% else %}
+                    <span class="text-muted">Нет прав</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty-message">Услуги не найдены.</p>
+{% endif %}
+
+<!-- Модальное окно для оформления заявки -->
+<div id="buyModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Оформление заявки</h3>
+            <span class="modal-close" onclick="closeBuyModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="service-info-preview">
+                <p><strong>Услуга:</strong> <span id="service_name_preview"></span></p>
+                <p><strong>Цена:</strong> <span id="service_price_preview"></span> ₽/мес.</p>
+            </div>
+            
+            <form method="POST" action="{{ url_for('buy_service') }}" id="buyForm">
+                <input type="hidden" id="service_id" name="service_id">
+                
+                <div class="form-group">
+                    <label for="client_name">Имя клиента</label>
+                    <input type="text" id="client_name" name="client_name" required pattern="[A-Za-zА-Яа-яЁё\s\-]{2,100}" title="Только буквы, пробелы и дефисы, от 2 до 100 символов" minlength="2" maxlength="100">
+                </div>
+                
+                <div class="form-group">
+                    <label for="client_phone">Телефон</label>
+                    <input type="tel" id="client_phone" name="client_phone" required pattern="^\+?[0-9\s\-\(\)]+$" title="Введите корректный номер телефона">
+                </div>
+                
+                <div class="form-group">
+                    <label for="address-search-input">Поиск адреса</label>
+                    <input type="text" id="address-search-input" placeholder="Начните вводить адрес для поиска на карте (например: Комсомольская 1а, г. Норильск)">
+                </div>
+                
+                <div class="form-group">
+                    <label for="address-map">Карта</label>
+                    <div id="address-map" style="width: 100%; height: 400px; border-radius: 10px;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="client_address">Адрес подключения</label>
+                    <input type="text" id="client_address" name="client_address" required readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Дополнительные заметки</label>
+                    <textarea id="notes" name="notes" rows="3"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-small" onclick="closeBuyModal()">Отмена</button>
+            <button type="submit" form="buyForm" class="btn btn-primary">Оформить заявку</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleDetails(button) {
+    const card = button.closest('.service-card');
+    const details = card.querySelector('.service-details');
+    
+    if (details.style.display === 'none' || !details.style.display) {
+        details.style.display = 'block';
+        card.classList.add('expanded');
+    } else {
+        details.style.display = 'none';
+        card.classList.remove('expanded');
+    }
+}
+
+function openBuyModal(serviceId, serviceName, servicePrice) {
+    document.getElementById('service_id').value = serviceId;
+    document.getElementById('service_name_preview').textContent = serviceName;
+    document.getElementById('service_price_preview').textContent = servicePrice.toFixed(2);
+    document.getElementById('buyModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    setTimeout(function() {
+        if (typeof L !== 'undefined') {
+            initAddressMap();
+        } else {
+            const checkInterval = setInterval(function() {
+                if (typeof L !== 'undefined') {
+                    clearInterval(checkInterval);
+                    initAddressMap();
+                }
+            }, 100);
+        }
+    }, 300);
+}
+
+function closeBuyModal() {
+    document.getElementById('buyModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    
+    // Очищаем форму
+    document.getElementById('buyForm').reset();
+    document.getElementById('client_address').value = '';
+    const searchInput = document.getElementById('address-search-input');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    const citySelect = document.getElementById('city-select');
+    if (citySelect) {
+        citySelect.value = '';
+    }
+    
+    // Уничтожаем карту
+    if (window.addressMap) {
+        window.addressMap.remove();
+        window.addressMap = null;
+        window.addressMarker = null;
+    }
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('buyModal');
+    if (event.target == modal) {
+        closeBuyModal();
+    }
+}
+
+let addressMap, addressMarker;
+
+function initAddressMap() {
+    if (window.addressMap) {
+        return;
+    }
+    
+    if (typeof L === 'undefined') {
+        console.error('Leaflet не загружен');
+        return;
+    }
+    
+    addressMap = L.map('address-map').setView([55.751574, 37.573856], 10);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(addressMap);
+    
+    const searchInput = document.getElementById('address-search-input');
+    let searchTimeout;
+    
+    function performSearch(query) {
+        if (!query || query.length < 2) {
+            return;
+        }
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    const lat = parseFloat(result.lat);
+                    const lng = parseFloat(result.lon);
+                    const address = result.display_name;
+                    updateMapWithAddress(address, lat, lng);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка геокодирования:', error);
+            });
+    }
+    
+    function updateMapWithAddress(address, lat, lng) {
+        document.getElementById('client_address').value = address;
+        
+        if (addressMarker) {
+            addressMap.removeLayer(addressMarker);
+        }
+        
+        addressMarker = L.marker([lat, lng]).addTo(addressMap);
+        addressMarker.bindPopup(address).openPopup();
+        addressMap.setView([lat, lng], 17);
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                return;
+            }
+            
+            searchTimeout = setTimeout(function() {
+                performSearch(query);
+            }, 500);
+        });
+    }
+    
+    addressMap.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.address) {
+                    const address = data.display_name;
+                    updateMapWithAddress(address, lat, lng);
+                    
+                    const searchInput = document.getElementById('address-search-input');
+                    if (searchInput) {
+                        const addressParts = address.split(',');
+                        if (addressParts.length > 1) {
+                            searchInput.value = addressParts.slice(-2).join(',').trim();
+                        } else {
+                            searchInput.value = address;
+                        }
+                    }
+                    
+                    
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка обратного геокодирования:', error);
+            });
+    });
+    
+    window.addressMap = addressMap;
+    window.addressMarker = addressMarker;
+}
+</script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}

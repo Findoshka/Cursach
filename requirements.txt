@@ -1,0 +1,7 @@
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Mail==0.10.0
+Werkzeug==3.0.1
+requests==2.31.0
+python-dotenv==1.2.1
+sendgrid==6.11.0

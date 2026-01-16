@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Заявки - Система учета заявок{% endblock %}
+
+{% block content %}
+<h2>Список заявок</h2>
+
+<div class="actions">
+    <div class="actions-right">
+        {% if current_user and current_user.is_admin() and current_user.admin_level >= 2 %}
+        <a href="{{ url_for('application_add') }}" class="btn btn-primary">+ Создать заявку</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Форма поиска и фильтров -->
+<div class="search-filters-container">
+    <form method="GET" action="{{ url_for('applications_list') }}" class="search-filters-form">
+        <div class="search-filters-row">
+            <div class="search-group">
+                <label for="search">Поиск</label>
+                <input type="text" id="search" name="search" value="{{ search_query }}" placeholder="Имя или телефон клиента">
+            </div>
+            
+            <div class="filter-group">
+                <label for="status">Статус</label>
+                <select id="status" name="status">
+                    <option value="">Все статусы</option>
+                    {% for status in statuses %}
+                    <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="date_from">Дата от</label>
+                <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+            </div>
+            
+            <div class="filter-group">
+                <label for="date_to">Дата до</label>
+                <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+            </div>
+            
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">Применить</button>
+                <a href="{{ url_for('applications_list') }}" class="btn btn-small">Сбросить</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="actions">
+    <div class="actions-left">
+        {% if search_query or status_filter or date_from or date_to %}
+        <div class="search-results-info">
+            Найдено заявок: <strong>{{ applications|length }}</strong>
+            {% if search_query %}| Поиск: "{{ search_query }}"{% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if applications %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Клиент</th>
+            <th>Телефон</th>
+            <th>Адрес</th>
+            <th>Услуги</th>
+            <th>Статус</th>
+            <th>Дедлайн</th>
+            <th>Дата создания</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for application in applications %}
+        <tr class="{% if application.sla_deadline and application.status != 'выполнена' and application.sla_deadline < now %}overdue-row{% endif %}">
+            <td>{{ application.id }}</td>
+            <td><strong>{{ application.client_name }}</strong></td>
+            <td>{{ application.client_phone }}</td>
+            <td>{{ application.client_address }}</td>
+            <td>
+                {% if application.services %}
+                    {% for service in application.services %}
+                        {{ service.name }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>
+                <span class="status status-{{ application.status|replace(' ', '-')|lower }}">
+                    {{ application.status }}
+                </span>
+            </td>
+            <td>
+                {% if application.sla_deadline %}
+                    <span class="deadline-badge {% if application.status != 'выполнена' and application.sla_deadline < now %}overdue{% endif %}">
+                        {{ application.sla_deadline.strftime('%d.%m.%Y') }}
+                    </span>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>{{ application.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td>
+                {% if current_user and current_user.is_admin() and current_user.admin_level >= 2 %}
+                <a href="{{ url_for('application_edit', application_id=application.id) }}" class="btn btn-small">Редактировать</a>
+                <form method="POST" action="{{ url_for('application_delete', application_id=application.id) }}" style="display: inline;" onsubmit="return confirm('Удалить заявку?');">
+                    <button type="submit" class="btn btn-small btn-danger">Удалить</button>
+                </form>
+                {% else %}
+                <span class="text-muted">Нет прав</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-message-container">
+    <p class="empty-message">
+        {% if search_query or status_filter or date_from or date_to %}
+            Заявки по заданным критериям не найдены. Попробуйте изменить параметры поиска или фильтров.
+        {% else %}
+            Заявки не найдены. Создайте первую заявку.
+        {% endif %}
+    </p>
+    {% if search_query or status_filter or date_from or date_to %}
+    <a href="{{ url_for('applications_list') }}" class="btn btn-primary">Показать все заявки</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
