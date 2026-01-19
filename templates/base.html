@@ -371,44 +371,17 @@
             const header = document.querySelector('header');
             if (!header) return;
 
-            let lastScrollY = window.scrollY;
-            let accumulatedUp = 0;
-            const minDelta = 8;
-            const revealThreshold = 60;
-
             function handleScroll() {
                 if (window.innerWidth > 768) {
                     header.classList.remove('header-hidden');
-                    lastScrollY = window.scrollY;
                     return;
                 }
 
                 const currentY = window.scrollY;
-                const delta = currentY - lastScrollY;
-
-                if (Math.abs(delta) < minDelta) return;
-
-                if (currentY <= 0) {
+                if (currentY <= 5) {
                     header.classList.remove('header-hidden');
-                    accumulatedUp = 0;
-                    lastScrollY = currentY;
-                    return;
-                }
-
-                if (delta > minDelta) {
+                } else {
                     header.classList.add('header-hidden');
-                    accumulatedUp = 0;
-                    lastScrollY = currentY;
-                    return;
-                }
-
-                if (delta < -minDelta) {
-                    accumulatedUp += -delta;
-                    if (accumulatedUp >= revealThreshold) {
-                        header.classList.remove('header-hidden');
-                        accumulatedUp = 0;
-                    }
-                    lastScrollY = currentY;
                 }
             }
 
