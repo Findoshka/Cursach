@@ -588,11 +588,9 @@ nav {
 }
 
 .notifications-dropdown {
-    position: fixed;
-    top: auto;
-    bottom: auto;
-    right: 20px;
-    margin-top: 10px;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
     width: 380px;
     max-height: 500px;
     background: var(--card-bg);
@@ -3462,7 +3460,9 @@ footer {
 
     .notifications-dropdown {
         width: 90vw;
-        right: 5vw;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
     }
 
     .search-filters-container {
