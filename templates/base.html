@@ -249,11 +249,12 @@
             const currentDisplay = dropdown.style.display || window.getComputedStyle(dropdown).display;
             
             if (currentDisplay === 'none' || !currentDisplay) {
-                // Вычисляем позицию относительно кнопки
-                const btnRect = btn.getBoundingClientRect();
                 dropdown.style.display = 'block';
-                dropdown.style.top = (btnRect.bottom + window.scrollY + 10) + 'px';
-                dropdown.style.right = (window.innerWidth - btnRect.right) + 'px';
+                // Сбрасываем инлайн-стили, чтобы работали CSS-правила позиционирования
+                dropdown.style.top = '';
+                dropdown.style.right = '';
+                dropdown.style.left = '';
+                dropdown.style.transform = '';
                 loadNotifications();
             } else {
                 dropdown.style.display = 'none';
