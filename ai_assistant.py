@@ -9,10 +9,11 @@ import json
 class AIAssistant:
     """Класс для работы с ИИ-ассистентом."""
     
-    def __init__(self, api_base_url=None, api_key=None, enabled=True):
+    def __init__(self, api_base_url=None, api_key=None, enabled=True, model=None):
         self.api_base_url = api_base_url
         self.api_key = api_key
         self.enabled = enabled
+        self.model = model or "llama-3.3-70b-versatile"
         self.services = []
         self.conversation_context = {}
         self.conversation_history = {}
@@ -176,7 +177,7 @@ class AIAssistant:
         messages.append({"role": "user", "content": user_message})
         
         data = {
-            "model": "gpt-3.5-turbo",
+            "model": self.model,
             "messages": messages,
             "temperature": 0.7,
             "max_tokens": 500

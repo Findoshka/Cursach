@@ -46,8 +46,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Максимальный 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 # Конфигурация ИИ API
-app.config['AI_API_BASE_URL'] = os.environ.get('AI_API_BASE_URL', 'https://api.artemox.com/v1')
+app.config['AI_API_BASE_URL'] = os.environ.get('AI_API_BASE_URL', 'https://api.groq.com/openai/v1')
 app.config['AI_API_KEY'] = os.environ.get('AI_API_KEY', '')
+app.config['AI_MODEL'] = os.environ.get('AI_MODEL', 'llama-3.3-70b-versatile')
 app.config['AI_ENABLED'] = os.environ.get('AI_ENABLED', 'true').lower() == 'true'
 
 # SLA настройки
@@ -160,7 +161,8 @@ mail = Mail(app)
 ai_assistant = AIAssistant(
     api_base_url=app.config.get('AI_API_BASE_URL'),
     api_key=app.config.get('AI_API_KEY'),
-    enabled=app.config.get('AI_ENABLED', True)
+    enabled=app.config.get('AI_ENABLED', True),
+    model=app.config.get('AI_MODEL')
 )
 
 
